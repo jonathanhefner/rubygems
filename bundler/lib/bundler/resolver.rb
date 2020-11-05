@@ -145,7 +145,11 @@ module Bundler
 
             next groups if @resolving_only_for_ruby
 
-            spec_group = SpecGroup.create_for(specs_by_platform, @platforms, platform)
+            platforms = dependency.gem_platforms(@platforms)
+
+            next groups if [Gem::Platform::RUBY] == platforms
+
+            spec_group = SpecGroup.create_for(specs_by_platform, platforms, platform)
             groups << spec_group
 
             groups
