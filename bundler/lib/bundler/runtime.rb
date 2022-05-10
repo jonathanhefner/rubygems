@@ -9,7 +9,7 @@ module Bundler
       @definition = definition
     end
 
-    def setup(*groups)
+    def setup(*groups, allow_compatible_activated_specs: false)
       @definition.ensure_equivalent_gemfile_and_lockfile if Bundler.frozen_bundle?
 
       # Has to happen first
@@ -22,11 +22,12 @@ module Bundler
 
       # Activate the specs
       load_paths = specs.map do |spec|
+        next if allow_compatible_activated_specs && compatible_spec_activated?(spec)
         check_for_activated_spec!(spec)
 
         Bundler.rubygems.mark_loaded(spec)
         spec.load_paths.reject {|path| $LOAD_PATH.include?(path) }
-      end.reverse.flatten
+      end.reverse.flatten.compact
 
       Bundler.rubygems.add_to_load_path(load_paths)
 
@@ -285,6 +286,12 @@ module Bundler
       end
 
       output
+    end
+
+    def compatible_spec_activated?(spec)
+      return unless dependency = @definition.dependencies.find {|dep| dep.name == spec.name }
+      return unless activated_spec = Bundler.rubygems.loaded_specs(spec.name)
+      dependency.requirement.satisfied_by?(activated_spec.version)
     end
 
     def check_for_activated_spec!(spec)
